@@ -13,6 +13,9 @@ public:
     explicit Aes256Ctr(std::string password, std::vector<uint8_t> nonce): password(std::move(password)), blockCounter(0), nonce(std::move(nonce)){}
     std::vector<uint8_t> encrypt(std::vector<uint8_t>& in);
     std::vector<uint8_t> decrypt(std::vector<uint8_t>& in);
+    static std::vector<uint8_t> getRandomNonce();
+    static std::vector<uint8_t> readNonce(std::ifstream& source);
+    static void saveNonce(std::vector<uint8_t>& nonce, std::ofstream& out);
 private:
     const std::string password;
     uint32_t blockCounter;

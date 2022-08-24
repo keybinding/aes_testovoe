@@ -1,7 +1,9 @@
+#include <random>
 #include "../header/Aes256Ctr.h"
 #include "../header/Aes256KeyExpander.h"
 #include "../header/Aes256BlockProcessor.h"
 #include "SHA256.h"
+#include "../header/FileProcessor.h"
 
 std::vector<uint8_t> Aes256Ctr::encrypt(std::vector<uint8_t> &in) {
     Aes256KeyExpander keyExpander;
@@ -54,4 +56,22 @@ std::vector<uint8_t> Aes256Ctr::makeCtrBlock(uint32_t counter) {
         ctrBlock[i] = counter & 0xff;
     }
     return ctrBlock;
+}
+
+std::vector<uint8_t> Aes256Ctr::getRandomNonce() {
+    std::random_device rd;
+    std::uniform_int_distribution<int> dist(0,255);
+    std::vector<uint8_t> nonce(16, 0);
+    for (uint8_t& d : nonce)
+    {
+        d = static_cast<uint8_t>(dist(rd) & 0xFF);
+    }
+    return nonce;
+}
+
+std::vector<uint8_t> Aes256Ctr::readNonce(std::ifstream& source) {
+    auto nonce = FileProcessor::readChunk(source, 16);
+    if (nonce.size() != 16)
+        throw std::invalid_argument("Не удалось прочитать nonce");
+    return nonce;
 }
