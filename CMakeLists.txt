@@ -3,7 +3,7 @@ project(testovoe_zadanie)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(testovoe_zadanie main.cpp include/aes_consts.h)
+add_executable(testovoe_zadanie main.cpp src/header/aes_consts.h src/header/KeyExpander.h src/header/Aes256KeyExpander.cpp src/header/Aes256KeyExpander.h)
 
 include_directories(include)
 find_library(SHA256 sha256 lib)

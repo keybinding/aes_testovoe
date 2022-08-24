@@ -4,12 +4,30 @@
 #include <vector>
 #include <random>
 #include "include/SHA256.h"
-#include "include/aes_consts.h"
+#include "src/header/aes_consts.h"
+#include "src/header/Aes256KeyExpander.h"
 
-#define CHUNK_SIZE 128
+#define CHUNK_SIZE 1024
 #define BLOCK_SIZE 16
 
 enum Mode {ENCRYPT, DECRYPT};
+
+class AesProcessor {
+public:
+    virtual std::vector<uint8_t> encrypt(std::vector<uint8_t> shouldEncrypt) = 0;
+    virtual std::vector<uint8_t> decrypt(std::vector<uint8_t> shouldDecrypt) = 0;
+    virtual ~AesProcessor() = default;
+};
+
+class Aes256 : public AesProcessor {
+    static const int Nk = 8;
+    static const int Nb = 4;
+    static const int Nr = 14;
+};
+
+class CtrModeProcessor {
+
+};
 
 class FileProcessor {
 public:
@@ -27,13 +45,8 @@ private:
     static std::vector<uint8_t> encryptBlock(std::vector<uint8_t> &in, std::vector<uint8_t> &key);
     static std::vector<uint8_t> decryptBlock(std::vector<uint8_t> &in, std::vector<uint8_t> &key);
     static std::vector<uint8_t> readChunk(std::ifstream &file, int byteCnt);
-    static std::vector<uint8_t> keyExpansion(std::vector<uint8_t>& key);
 
     std::vector<uint8_t> passwordSha256(std::string const&basicString);
-
-    static void rotWord(uint8_t word[4]);
-
-    static void subWord(uint8_t word[4]);
 
     static void addRoundKey(std::vector<std::vector<uint8_t>> &state, std::vector<uint8_t> &expandedKey, size_t startFrom);
 
@@ -70,17 +83,18 @@ FileProcessor::FileProcessor(std::string source, std::string dest, Mode mode, st
 Mode getMode(const char *mode);
 
 void FileProcessor::process() {
-    std::vector<uint8_t> pwdHash = passwordSha256(pwd);
-    std::ifstream file(src, std::ios_base::binary | std::ios_base::in);
+    //std::vector<uint8_t> pwdHash = passwordSha256(pwd);
+    std::ifstream file(src, std::ios_base::binary | std::ios_base::in );
     std::ofstream outFile(dst, std::ios_base::binary | std::ios_base::out);
     std::vector<uint8_t> nonce = mode == ENCRYPT ? getRandomNonce() : readNonce(file);
     if (mode == ENCRYPT)
         saveNonce(nonce, outFile);
-
+    auto key = passwordSha256(pwd);
+    Aes256KeyExpander keyExpander;
+    std::vector<uint8_t> expandedKey = keyExpander.keyExpansion(key);
     while(!file.eof()) {
         uint32_t blocksCounter = 1;
         std::vector<uint8_t> chunk = readChunk(file, CHUNK_SIZE);
-        std::vector<uint8_t> expandedKey = keyExpansion(pwdHash);
         std::vector<uint8_t> out(chunk.size(), 0);
         size_t blocks = chunk.size() / BLOCK_SIZE;
         for (int i = 0; i < blocks; i++) {
@@ -145,43 +159,6 @@ std::vector<uint8_t> FileProcessor::readChunk(std::ifstream& file, int byteCnt) 
     return result;
 }
 
-std::vector<uint8_t> FileProcessor::keyExpansion(std::vector<uint8_t> &key) {
-    uint8_t temp[4] = {0x00, 0x00, 0x00, 0x00};
-    uint8_t rcon[4] = {0x00, 0x00, 0x00, 0x00};
-    uint8_t ci[10] = {0x01, 0x02, 0x04, 0x08, 0x10,0x20, 0x40, 0x80, 0x1b, 0x36};
-    std::vector<uint8_t> expandedKey(4 * (Nr + 1) * 4, 0);
-    for(size_t i = 0; i < 4 * (Nr + 1); i++) {
-        size_t beg = 4 * i;
-        if (i < Nk) {
-            for(size_t j = beg; j < beg + 4; j++)
-                expandedKey[j] = key[j];
-        }
-        else if (i % Nk == 0) {
-            for(size_t im1 = beg - 4, k = 0; im1 < beg; im1++, k++)
-                temp[k] = expandedKey[im1];
-            rotWord(temp);
-            subWord(temp);
-            rcon[0] = ci[i / Nk - 1];
-            for(size_t j = beg, k = 0; j < beg + 4; j++, k++)
-                expandedKey[j] = expandedKey[j - Nk * 4] ^ temp[k] ^ rcon[k];
-        }
-        else if (i % Nk == 4){
-            for(size_t im1 = beg - 4, k = 0; im1 < beg; im1++, k++)
-                temp[k] = expandedKey[im1];
-            subWord(temp);
-            for(size_t j = beg, k = 0; j < beg + 4; j++, k++)
-                expandedKey[j] = expandedKey[j - Nk * 4] ^ temp[k];
-        }
-        else {
-            for(size_t im1 = beg - 4, k = 0; im1 < beg; im1++, k++)
-                temp[k] = expandedKey[im1];
-            for(size_t j = beg, k = 0; j < beg + 4; j++, k++)
-                expandedKey[j] = expandedKey[j - Nk * 4] ^ temp[k];
-        }
-    }
-    return expandedKey;
-}
-
 std::vector<uint8_t> FileProcessor::passwordSha256(std::string const&basicString) {
     SHA256 sha;
     sha.update(pwd);
@@ -192,21 +169,6 @@ std::vector<uint8_t> FileProcessor::passwordSha256(std::string const&basicString
     }
     delete[] pwdHash;
     return result;
-}
-
-void FileProcessor::rotWord(uint8_t *word) {
-    uint8_t c = word[0];
-    word[0] = word[1];
-    word[1] = word[2];
-    word[2] = word[3];
-    word[3] = c;
-}
-
-void FileProcessor::subWord(uint8_t *word) {
-    int i;
-    for (i = 0; i < 4; i++) {
-        word[i] = AesConsts::SBOX[word[i] / 16][word[i] % 16];
-    }
 }
 
 void FileProcessor::addRoundKey(std::vector<std::vector<uint8_t>> &state, std::vector<uint8_t> &expandedKey, size_t startFrom) {
