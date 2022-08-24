@@ -1,7 +1,3 @@
-//
-// Created by Romanv Denis on 24.08.2022.
-//
-
 #ifndef TESTOVOE_ZADANIE_AES256KEYEXPANDER_H
 #define TESTOVOE_ZADANIE_AES256KEYEXPANDER_H
 

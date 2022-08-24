@@ -1,7 +1,3 @@
-//
-// Created by Romanv Denis on 24.08.2022.
-//
-
 #ifndef TESTOVOE_ZADANIE_AESBLOCKPROCESSOR_H
 #define TESTOVOE_ZADANIE_AESBLOCKPROCESSOR_H
 

@@ -1,7 +1,3 @@
-//
-// Created by Romanv Denis on 23.08.2022.
-//
-
 #ifndef TESTOVOE_ZADANIE_AES_CONSTS_H
 #define TESTOVOE_ZADANIE_AES_CONSTS_H
 
