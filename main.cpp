@@ -24,9 +24,9 @@ private:
     static const int Nb = 4;
     static const int Nr = 14;
 
-    static std::vector<uint8_t> encryptBlock(std::vector<uint8_t> &in, std::vector<uint8_t> &key, size_t startFrom);
-    static std::vector<uint8_t> decryptBlock(std::vector<uint8_t> &in, std::vector<uint8_t> &key, size_t startFrom);
-    static std::vector<uint8_t> readChunk(std::ifstream &file);
+    static std::vector<uint8_t> encryptBlock(std::vector<uint8_t> &in, std::vector<uint8_t> &key);
+    static std::vector<uint8_t> decryptBlock(std::vector<uint8_t> &in, std::vector<uint8_t> &key);
+    static std::vector<uint8_t> readChunk(std::ifstream &file, int byteCnt);
     static std::vector<uint8_t> keyExpansion(std::vector<uint8_t>& key);
 
     std::vector<uint8_t> passwordSha256(std::string const&basicString);
@@ -53,9 +53,13 @@ private:
 
     static void debugState(std::vector<std::vector<uint8_t>> &state);
 
-    std::vector<uint8_t> getRandomNonce();
+    static std::vector<uint8_t> getRandomNonce();
 
-    std::vector<uint8_t> readNonce();
+    static std::vector<uint8_t> readNonce(std::ifstream& source);
+
+    static void saveNonce(std::vector<uint8_t>& nonce, std::ofstream& out);
+
+    static std::vector<uint8_t> makeCtrBlock(std::vector<uint8_t> &nonce, uint32_t counter);
 };
 
 
@@ -67,36 +71,38 @@ Mode getMode(const char *mode);
 
 void FileProcessor::process() {
     std::vector<uint8_t> pwdHash = passwordSha256(pwd);
-    std::vector<uint8_t> nonce = mode == ENCRYPT ? getRandomNonce() : readNonce();
-
     std::ifstream file(src);
     std::ofstream outFile(dst);
+    std::vector<uint8_t> nonce = mode == ENCRYPT ? getRandomNonce() : readNonce(file);
+    if (mode == ENCRYPT)
+        saveNonce(nonce, outFile);
+
     while(!file.eof()) {
-        std::vector<uint8_t> chunk = readChunk(file);
+        uint32_t blocksCounter = 1;
+        std::vector<uint8_t> chunk = readChunk(file, CHUNK_SIZE);
         std::vector<uint8_t> expandedKey = keyExpansion(pwdHash);
         std::vector<uint8_t> out(chunk.size(), 0);
         size_t blocks = chunk.size() / BLOCK_SIZE;
         for (int i = 0; i < blocks; i++) {
-            std::vector<uint8_t> block;
-            switch (mode) {
-                case ENCRYPT:
-                    block = encryptBlock(chunk, expandedKey, i * BLOCK_SIZE);
-                    break;
-                case DECRYPT:
-                    block = decryptBlock(chunk, expandedKey, i * BLOCK_SIZE);
-                    break;
-            }
-            std::copy(block.begin(), block.end(), out.begin() + i * BLOCK_SIZE);
+            std::vector<uint8_t> counterBlock = makeCtrBlock(nonce, blocksCounter);
+            std::vector<uint8_t> block = encryptBlock(counterBlock, expandedKey);
+            for (int j = 0; j < BLOCK_SIZE; ++j)
+                out[i * BLOCK_SIZE + j] = block[j] ^ chunk[i * BLOCK_SIZE + j];
+            blocksCounter++;
         }
-        if (chunk.size() % BLOCK_SIZE != 0)
-            std::copy(chunk.begin() + blocks * BLOCK_SIZE, chunk.end(), out.begin() + blocks * BLOCK_SIZE);
-
+        int bytesLeft = chunk.size() % BLOCK_SIZE;
+        if (bytesLeft != 0) {
+            std::vector<uint8_t> counterBlock = makeCtrBlock(nonce, blocksCounter);
+            std::vector<uint8_t> block = encryptBlock(counterBlock, expandedKey);
+            for (int j = 0; j < bytesLeft; ++j)
+                out[blocks * BLOCK_SIZE + j] = block[j] ^ chunk[blocks * BLOCK_SIZE + j];
+        }
         outFile.write((const char*)out.data(), out.size());
     }
 }
 
 std::vector<uint8_t>
-FileProcessor::encryptBlock(std::vector<uint8_t> &in, std::vector<uint8_t> &expandedKey, size_t startFrom) {
+FileProcessor::encryptBlock(std::vector<uint8_t> &in, std::vector<uint8_t> &expandedKey) {
     std::vector<uint8_t> out(4 * Nb, 0);
     std::vector<std::vector<uint8_t>> state = {
         std::vector<uint8_t>(4, 0),
@@ -106,7 +112,7 @@ FileProcessor::encryptBlock(std::vector<uint8_t> &in, std::vector<uint8_t> &expa
     };
     for(size_t i = 0; i < state.size(); i++)
         for(size_t j = 0; j < state[1].size(); j++)
-            state[i][j] = in[startFrom + i + 4 * j];
+            state[i][j] = in[i + 4 * j];
 
     addRoundKey(state, expandedKey, 0);
 
@@ -127,12 +133,12 @@ FileProcessor::encryptBlock(std::vector<uint8_t> &in, std::vector<uint8_t> &expa
     return out;
 }
 
-std::vector<uint8_t> FileProcessor::readChunk(std::ifstream& file) {
-    char out[CHUNK_SIZE];
-    file.read(out, CHUNK_SIZE);
+std::vector<uint8_t> FileProcessor::readChunk(std::ifstream& file, int byteCnt) {
+    char out[byteCnt];
+    file.read(out, byteCnt);
     size_t n = file.gcount();
     std::vector<uint8_t> result;
-    result.reserve(CHUNK_SIZE);
+    result.reserve(byteCnt);
     for(size_t i = 0; i < n; i++){
         result.push_back(out[i]);
     }
@@ -257,7 +263,7 @@ void FileProcessor::shiftRow(std::vector<std::vector<uint8_t>> &state, int rowId
 }
 
 std::vector<uint8_t>
-FileProcessor::decryptBlock(std::vector<uint8_t> &in, std::vector<uint8_t> &key, size_t startFrom) {
+FileProcessor::decryptBlock(std::vector<uint8_t> &in, std::vector<uint8_t> &key) {
     std::vector<uint8_t> out(4 * Nb, 0);
     std::vector<std::vector<uint8_t>> state = {
             std::vector<uint8_t>(4, 0),
@@ -267,7 +273,7 @@ FileProcessor::decryptBlock(std::vector<uint8_t> &in, std::vector<uint8_t> &key,
     };
     for(size_t i = 0; i < state.size(); i++)
         for(size_t j = 0; j < state[1].size(); j++)
-            state[i][j] = in[startFrom + i + 4 * j];
+            state[i][j] = in[i + 4 * j];
     addRoundKey(state, key, Nr * 4 * Nb);
     for (int round = Nr - 1; round >= 1; round--) {
         invSubBytes(state);
@@ -346,8 +352,27 @@ std::vector<uint8_t> FileProcessor::getRandomNonce() {
     return nonce;
 }
 
-std::vector<uint8_t> FileProcessor::readNonce() {
-    return std::vector<uint8_t>();
+std::vector<uint8_t> FileProcessor::readNonce(std::ifstream& source) {
+    auto nonce = readChunk(source, BLOCK_SIZE);
+    if (nonce.size() != BLOCK_SIZE)
+        throw std::invalid_argument("Не удалось прочитать nonce");
+    return nonce;
+}
+
+void FileProcessor::saveNonce(std::vector<uint8_t>& nonce, std::ofstream& out) {
+    out.write((const char*)nonce.data(), nonce.size());
+}
+
+std::vector<uint8_t> FileProcessor::makeCtrBlock(std::vector<uint8_t> &nonce, uint32_t counter) {
+    std::vector<uint8_t> ctrBlock = std::vector<uint8_t>(BLOCK_SIZE, 0);
+    if (nonce.size() != BLOCK_SIZE)
+        throw std::invalid_argument("Nonce length must be 16 byte");
+    std::copy(nonce.begin(), nonce.end(), ctrBlock.begin());
+    for(int i = 0; i < 4; i++){
+        counter = counter >> (i * 8);
+        ctrBlock[i] = counter & 0xff;
+    }
+    return ctrBlock;
 }
 
 int main(int argc, char *argv[]) {
