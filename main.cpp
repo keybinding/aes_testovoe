@@ -71,8 +71,8 @@ Mode getMode(const char *mode);
 
 void FileProcessor::process() {
     std::vector<uint8_t> pwdHash = passwordSha256(pwd);
-    std::ifstream file(src);
-    std::ofstream outFile(dst);
+    std::ifstream file(src, std::ios_base::binary | std::ios_base::in);
+    std::ofstream outFile(dst, std::ios_base::binary | std::ios_base::out);
     std::vector<uint8_t> nonce = mode == ENCRYPT ? getRandomNonce() : readNonce(file);
     if (mode == ENCRYPT)
         saveNonce(nonce, outFile);
@@ -380,8 +380,6 @@ int main(int argc, char *argv[]) {
     std::string pwd(argv[3]);
     FileProcessor encrypt(argv[1], argv[2], mode, argv[3]);
     encrypt.process();
-    FileProcessor decrypt("dest.txt", "decrypt.txt", DECRYPT, argv[3]);
-    decrypt.process();
     return 0;
 }
 
