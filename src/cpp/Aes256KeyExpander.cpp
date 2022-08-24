@@ -1,6 +1,3 @@
-//
-// Created by Romanv Denis on 24.08.2022.
-//
 #include "../header/Aes256KeyExpander.h"
 #include "../header/aes_consts.h"
 
