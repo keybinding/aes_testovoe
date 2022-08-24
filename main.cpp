@@ -12,19 +12,6 @@
 
 enum Mode {ENCRYPT, DECRYPT};
 
-class AesProcessor {
-public:
-    virtual std::vector<uint8_t> encrypt(std::vector<uint8_t> shouldEncrypt) = 0;
-    virtual std::vector<uint8_t> decrypt(std::vector<uint8_t> shouldDecrypt) = 0;
-    virtual ~AesProcessor() = default;
-};
-
-class Aes256 : public AesProcessor {
-    static const int Nk = 8;
-    static const int Nb = 4;
-    static const int Nr = 14;
-};
-
 class CtrModeProcessor {
 
 };
@@ -83,10 +70,9 @@ FileProcessor::FileProcessor(std::string source, std::string dest, Mode mode, st
 Mode getMode(const char *mode);
 
 void FileProcessor::process() {
-    //std::vector<uint8_t> pwdHash = passwordSha256(pwd);
     std::ifstream file(src, std::ios_base::binary | std::ios_base::in );
     std::ofstream outFile(dst, std::ios_base::binary | std::ios_base::out);
-    std::vector<uint8_t> nonce = mode == ENCRYPT ? getRandomNonce() : readNonce(file);
+    auto nonce = mode == ENCRYPT ? getRandomNonce() : readNonce(file);
     if (mode == ENCRYPT)
         saveNonce(nonce, outFile);
     auto key = passwordSha256(pwd);

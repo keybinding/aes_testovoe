@@ -2,10 +2,11 @@
 // Created by Romanv Denis on 24.08.2022.
 //
 
-#include "Aes256KeyExpander.h"
-#include "aes_consts.h"
+#include "../header/Aes256KeyExpander.h"
+#include "../header/aes_consts.h"
 
 std::vector<uint8_t> Aes256KeyExpander::keyExpansion(std::vector<uint8_t>& key) {
+    checkKey(key);
     uint8_t temp[4] = {0x00, 0x00, 0x00, 0x00};
     uint8_t rcon[4] = {0x00, 0x00, 0x00, 0x00};
     uint8_t ci[10] = {0x01, 0x02, 0x04, 0x08, 0x10,0x20, 0x40, 0x80, 0x1b, 0x36};

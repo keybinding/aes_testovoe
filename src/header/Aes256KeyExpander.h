@@ -33,14 +33,14 @@ public:
      */
     static const int wordsPerRound = 4;
 
-    virtual ~Aes256KeyExpander() = default;
+    ~Aes256KeyExpander() override = default;
 
     /**
      *
      * @param key 256 bit key to produce a schedule. Throws std::invalid_argument if the key is of different length
      * @return key schedule for AES encryption (https://en.wikipedia.org/wiki/AES_key_schedule)
      */
-    virtual  std::vector<uint8_t> keyExpansion(std::vector<uint8_t>& key);
+     std::vector<uint8_t> keyExpansion(std::vector<uint8_t>& key) override;
 
 private:
     /**
