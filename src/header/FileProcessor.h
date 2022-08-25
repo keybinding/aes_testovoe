@@ -21,7 +21,7 @@ public:
      * @param byteCnt number of bytes to be read
      * @return
      */
-    static std::vector<uint8_t> readChunk(std::ifstream &file, int byteCnt);
+    static std::vector<uint8_t> readChunk(std::ifstream &file, uint32_t byteCnt);
 private:
     const std::string src;
     const std::string dst;

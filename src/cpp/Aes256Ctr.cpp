@@ -77,6 +77,6 @@ std::vector<uint8_t> Aes256Ctr::getRandomNonce() {
 std::vector<uint8_t> Aes256Ctr::readNonce(std::ifstream& source) {
     auto nonce = FileProcessor::readChunk(source, 16);
     if (nonce.size() != 16)
-        throw std::invalid_argument("Не удалось прочитать nonce");
+        throw std::invalid_argument("Couldn't read first 16 bytes of nonce from provided source.");
     return nonce;
 }

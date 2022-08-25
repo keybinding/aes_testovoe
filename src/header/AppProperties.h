@@ -17,11 +17,11 @@ struct AppProperties {
      */
     const std::string destFile;
     /**
-     * Bytes read from input at a time
+     * Bytes read from input at a time. First line of config.txt, must be multiple of 16 (%16==0). Default = 8196
      */
-    const int inputSize;
+    const uint32_t inputSize;
     /**
-     * Mode encryption/decryption (e/d)
+     * Mode encryption/decryption (e/d). Default = e
      */
     const Mode mode;
     /**
@@ -37,8 +37,12 @@ struct AppProperties {
      */
     static std::shared_ptr<AppProperties> build(int argc, char *argv[]);
 private:
-    AppProperties(std::string sourceFile, std::string destFile, std::string password, int inputSize, Mode mode);
+    AppProperties(std::string sourceFile, std::string destFile, std::string password, uint32_t inputSize, Mode mode);
     static Mode getMode(const char *mode);
+
+    static void checkParams(int argc, char **pString);
+
+    static uint32_t getInputSizeParam();
 };
 
 
