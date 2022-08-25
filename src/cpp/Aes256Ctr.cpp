@@ -4,6 +4,8 @@
 #include "../header/Aes256BlockProcessor.h"
 #include "SHA256.h"
 #include "../header/FileProcessor.h"
+#include <omp.h>
+#include <thread>
 
 std::vector<uint8_t> Aes256Ctr::encrypt(std::vector<uint8_t> &in) {
     Aes256KeyExpander keyExpander;
@@ -13,17 +15,20 @@ std::vector<uint8_t> Aes256Ctr::encrypt(std::vector<uint8_t> &in) {
     blockCounter++;
     std::vector<uint8_t> out(in.size(), 0);
     size_t blocks = in.size() / blockSize;
-    for (int i = 0; i < blocks; i++) {
-        std::vector<uint8_t> counterBlock = makeCtrBlock(blockCounter);
-        std::vector<uint8_t> block = blockProcessor.encryptBlock(counterBlock, expandedKey);
-        for (int j = 0; j < blockSize; ++j)
-            out[i * blockSize + j] = block[j] ^ in[i * blockSize + j];
-        blockCounter++;
+    #pragma omp parallel num_threads(std::thread::hardware_concurrency())
+    {
+        for (int i = 0; i < blocks; i++) {
+            auto counterBlock = makeCtrBlock(blockCounter + i);
+            auto block = blockProcessor.encryptBlock(counterBlock, expandedKey);
+            for (int j = 0; j < blockSize; ++j)
+                out[i * blockSize + j] = block[j] ^ in[i * blockSize + j];
+        }
     }
-    int bytesLeft = in.size() % blockSize;
+    blockCounter+=blocks;
+    size_t bytesLeft = in.size() % blockSize;
     if (bytesLeft != 0) {
-        std::vector<uint8_t> counterBlock = makeCtrBlock(blockCounter);
-        std::vector<uint8_t> block = blockProcessor.encryptBlock(counterBlock, expandedKey);
+        auto counterBlock = makeCtrBlock(blockCounter);
+        auto block = blockProcessor.encryptBlock(counterBlock, expandedKey);
         for (int j = 0; j < bytesLeft; ++j)
             out[blocks * blockSize + j] = block[j] ^ in[blocks * blockSize + j];
     }

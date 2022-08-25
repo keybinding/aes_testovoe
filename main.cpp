@@ -10,8 +10,7 @@
 #include "src/header/Aes256Ctr.h"
 #include "src/header/FileProcessor.h"
 
-#define CHUNK_SIZE 1024
-#define BLOCK_SIZE 16
+#define CHUNK_SIZE 8192
 
 enum Mode {ENCRYPT, DECRYPT};
 
@@ -35,7 +34,7 @@ int main(int argc, char *argv[]) {
         Aes256Ctr aes256Ctr(pwd, nonce);
         while(!source.eof()) {
             auto chunk = FileProcessor::readChunk(source, CHUNK_SIZE);
-            auto out = aes256Ctr.encrypt(chunk);
+            auto out = mode == ENCRYPT ? aes256Ctr.encrypt(chunk) : aes256Ctr.decrypt(chunk);
             dest.write((const char*)out.data(), out.size());
         }
     });

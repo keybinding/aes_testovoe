@@ -2,7 +2,12 @@ cmake_minimum_required(VERSION 3.23)
 project(testovoe_zadanie)
 
 set(CMAKE_CXX_STANDARD 20)
-
+find_package(OpenMP)
+if (OPENMP_FOUND)
+    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+    set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
+endif()
 add_executable(testovoe_zadanie main.cpp src/header/aes_consts.h src/header/KeyExpander.h src/cpp/Aes256KeyExpander.cpp src/header/Aes256KeyExpander.h src/header/AesBlockProcessor.h src/cpp/Aes256BlockProcessor.cpp src/header/Aes256BlockProcessor.h src/cpp/Aes256Ctr.cpp src/header/Aes256Ctr.h src/cpp/FileProcessor.cpp src/header/FileProcessor.h)
 
 include_directories(include)

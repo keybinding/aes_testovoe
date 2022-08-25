@@ -62,12 +62,12 @@ std::vector<uint8_t> Aes256BlockProcessor::decryptBlock(std::vector<uint8_t>& bl
     return out;
 }
 
-void Aes256BlockProcessor::addRoundKey(std::vector<std::vector<uint8_t>> &state, std::vector<uint8_t> &expandedKey,
+void Aes256BlockProcessor::addRoundKey(std::vector<std::vector<uint8_t>> &state, std::vector<uint8_t> &keySchedule,
                                        size_t startFrom) {
     int i, j;
     for (i = 0; i < 4; i++) {
         for (j = 0; j < Nb; j++) {
-            state[i][j] = state[i][j] ^ expandedKey[startFrom + i + 4 * j];
+            state[i][j] = state[i][j] ^ keySchedule[startFrom + i + 4 * j];
         }
     }
 }
