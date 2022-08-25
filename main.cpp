@@ -1,6 +1,5 @@
 #include <iostream>
 #include <fstream>
-#include "src/header/Aes256KeyExpander.h"
 #include "src/header/Aes256Ctr.h"
 #include "src/header/FileProcessor.h"
 #include "src/header/AppProperties.h"
