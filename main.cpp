@@ -7,12 +7,6 @@
 
 int main(int argc, char *argv[]) {
     auto properties = AppProperties::build(argc, argv);
-    std::cout << properties->sourceFile << std::endl;
-    std::cout << properties->destFile << std::endl;
-    std::cout << properties->password << std::endl;
-    std::cout << properties->mode << std::endl;
-    std::cout << properties->inputSize << std::endl;
-
     FileProcessor fileProcessor(argv[1], argv[2]);
     fileProcessor.process([properties](std::ifstream &source, std::ofstream &dest){
         auto nonce = properties->mode == ENCRYPT ? Aes256Ctr::getRandomNonce() : Aes256Ctr::readNonce(source);
