@@ -1,18 +1,11 @@
 #include <iostream>
-#include <utility>
 #include <fstream>
-#include <vector>
-#include <random>
-#include <functional>
-#include "include/SHA256.h"
-#include "src/header/aes_consts.h"
 #include "src/header/Aes256KeyExpander.h"
 #include "src/header/Aes256Ctr.h"
 #include "src/header/FileProcessor.h"
+#include "src/header/AppProperties.h"
 
-#define CHUNK_SIZE 8192
-
-enum Mode {ENCRYPT, DECRYPT};
+#define CHUNK_SIZE 1073741824 //8196
 
 Mode getMode(const char *mode) {
     if (*mode == 'e')
@@ -23,18 +16,17 @@ Mode getMode(const char *mode) {
 }
 
 int main(int argc, char *argv[]) {
-    Mode mode = getMode(argv[4]);
-    std::string pwd(argv[3]);
+    auto properties = AppProperties::build(argc, argv);
     FileProcessor fileProcessor(argv[1], argv[2]);
-    fileProcessor.process([&mode, &pwd](std::ifstream &source, std::ofstream &dest){
-        auto nonce = mode == ENCRYPT ? Aes256Ctr::getRandomNonce() : Aes256Ctr::readNonce(source);
-        if (mode == ENCRYPT)
+    fileProcessor.process([properties](std::ifstream &source, std::ofstream &dest){
+        auto nonce = properties->mode == ENCRYPT ? Aes256Ctr::getRandomNonce() : Aes256Ctr::readNonce(source);
+        if (properties->mode == ENCRYPT)
             //save nonce in first block
             dest.write((const char*)nonce.data(), nonce.size());
-        Aes256Ctr aes256Ctr(pwd, nonce);
+        Aes256Ctr aes256Ctr(properties->password, nonce);
         while(!source.eof()) {
             auto chunk = FileProcessor::readChunk(source, CHUNK_SIZE);
-            auto out = mode == ENCRYPT ? aes256Ctr.encrypt(chunk) : aes256Ctr.decrypt(chunk);
+            auto out = properties->mode == ENCRYPT ? aes256Ctr.encrypt(chunk) : aes256Ctr.decrypt(chunk);
             dest.write((const char*)out.data(), out.size());
         }
     });

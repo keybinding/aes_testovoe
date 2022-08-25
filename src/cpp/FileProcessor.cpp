@@ -7,14 +7,11 @@ FileProcessor::FileProcessor(std::string source, std::string dest): src(std::mov
 }
 
 std::vector<uint8_t> FileProcessor::readChunk(std::ifstream& file, int byteCnt) {
-    char out[byteCnt];
-    file.read(out, byteCnt);
-    size_t n = file.gcount();
-    std::vector<uint8_t> result;
-    result.reserve(byteCnt);
-    for(size_t i = 0; i < n; i++){
-        result.push_back(out[i]);
-    }
+    std::vector<uint8_t> result(byteCnt, 0);
+    file.read(reinterpret_cast<std::ifstream::char_type*>(&result.front()), byteCnt);
+    auto actuallyRead = file.gcount();
+    if (actuallyRead != byteCnt)
+        result.erase(result.begin() + actuallyRead, result.end());;
     return result;
 }
 
