@@ -15,15 +15,14 @@ std::vector<uint8_t> Aes256Ctr::encrypt(std::vector<uint8_t> &in) {
     blockCounter++;
     std::vector<uint8_t> out(in.size(), 0);
     size_t blocks = in.size() / blockSize;
-    #pragma omp parallel num_threads(std::thread::hardware_concurrency())
-    {
+    #pragma omp parallel for shared(blockCounter, out)
         for (size_t i = 0; i < blocks; i++) {
             auto counterBlock = makeCtrBlock(blockCounter + i);
             auto block = blockProcessor.encryptBlock(counterBlock, expandedKey);
             for (int j = 0; j < blockSize; ++j)
                 out[i * blockSize + j] = block[j] ^ in[i * blockSize + j];
         }
-    }
+
     blockCounter+=blocks;
     size_t bytesLeft = in.size() % blockSize;
     if (bytesLeft != 0) {
