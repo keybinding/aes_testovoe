@@ -15,7 +15,7 @@ std::vector<uint8_t> Aes256Ctr::encrypt(std::vector<uint8_t> &in) {
     blockCounter++;
     std::vector<uint8_t> out(in.size(), 0);
     size_t blocks = in.size() / blockSize;
-    #pragma omp parallel for shared(blockCounter, out)
+    #pragma omp parallel for default(none) shared(blockCounter, out, blocks, blockProcessor, expandedKey, in)
         for (size_t i = 0; i < blocks; i++) {
             auto counterBlock = makeCtrBlock(blockCounter + i);
             auto block = blockProcessor.encryptBlock(counterBlock, expandedKey);
